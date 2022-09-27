@@ -23,6 +23,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <udp.h>
+#include <string.h>
+#include <SEGGER_SYSVIEW.h>
 
 /* USER CODE END Includes */
 
@@ -97,7 +100,7 @@ int main(void)
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
   MX_LWIP_Init();
-
+  SEGGER_SYSVIEW_Conf();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -291,11 +294,27 @@ void StartDefaultTask(void *argument)
 {
   /* init code for LWIP */
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
+  const char* message = "Hello UDP message!\n\r";
+
+  ip_addr_t PC_IPADDR;
+  IP_ADDR4(&PC_IPADDR, 192, 168, 0, 236);
+
+  struct udp_pcb* my_udp = udp_new();
+  udp_connect(my_udp, &PC_IPADDR, 62510);
+  struct pbuf* udp_buffer = NULL;  /* Infinite loop */
+
   for(;;)
   {
 	ethernetif_input(&gnetif);
-    osDelay(1);
+	  osDelay(1000);
+	/* !! PBUF_RAM is critical for correct operation !! */
+	udp_buffer = pbuf_alloc(PBUF_TRANSPORT, strlen(message), PBUF_RAM);
+
+	if (udp_buffer != NULL) {
+	  memcpy(udp_buffer->payload, message, strlen(message));
+	  udp_send(my_udp, udp_buffer);
+	  pbuf_free(udp_buffer);
+	}
   }
   /* USER CODE END 5 */
 }
